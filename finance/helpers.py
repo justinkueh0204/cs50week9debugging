@@ -62,3 +62,15 @@ def lookup(symbol):
 def usd(value):
     """Format value as USD."""
     return f"${value:,.2f}"
+
+
+
+
+def transform_stock_quantity_rows_to_dictionary(groupedstockquantity):
+    """Transforms sqlite db rows to dictionary"""
+    dictionary_of_stocks = {}
+    for row in groupedstockquantity:
+        stock_symbol = row["stock_symbol"]
+        corresponding_number_of_stocks = row["quantity"]
+        dictionary_of_stocks[stock_symbol] = corresponding_number_of_stocks
+    return dictionary_of_stocks

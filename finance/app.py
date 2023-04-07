@@ -6,10 +6,10 @@ from flask_session import Session
 from tempfile import mkdtemp
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from helpers import apology, login_required, lookup, usd
-# export API_KEY=pk_919c7472cf0f4aad9b132fcf906c5a51
+from helpers import apology, login_required, lookup, usd, transform_stock_quantity_rows_to_dictionary
 
-# Configure application
+
+# Configure application 
 app = Flask(__name__)
 
 # Custom filter
@@ -25,6 +25,7 @@ db = SQL("sqlite:///finance.db")
 
 # Make sure API key is set
 if not os.environ.get("API_KEY"):
+    print(os.environ.get('API_KEY'))
     raise RuntimeError("API_KEY not set")
 
 @app.after_request
@@ -251,19 +252,15 @@ def sell():
     user_id = session["user_id"]
     groupedstockquantity = db.execute("SELECT stock_symbol, SUM(quantity) AS quantity FROM buystocks WHERE user_id = ? GROUP BY stock_symbol", user_id)
     cash = db.execute("SELECT cash FROM users where id = ?", user_id)[0]["cash"]
+    stock_quantity_dictionary = transform_stock_quantity_rows_to_dictionary(groupedstockquantity)
 
     if request.method == "GET":
-        list_of_stock_symbols = []
-        for row in groupedstockquantity:
-            print(f'{row["stock_symbol"]}')
-            list_of_stock_symbols.append(row["stock_symbol"])
-            print(f"{list_of_stock_symbols}")
-        return render_template("sell.html", list_of_stock_symbols=list_of_stock_symbols)
+        return render_template("sell.html", list_of_stock_symbols=list(stock_quantity_dictionary.keys()))
 
     elif request.method == "POST":
         input_shares_quantity = float(request.form.get("shares"))
         symbol = request.form.get("sell")
-        user_shares_quantity = groupedstockquantity[symbol]
+        user_shares_quantity = stock_quantity_dictionary[symbol]
         price = lookup(symbol)["price"]
 
         if input_shares_quantity < 0:
@@ -275,7 +272,8 @@ def sell():
         else:
             # Update user's cash
             # Update user's stocks
-            cash += (price * quantity)
-
+            cash += (price * user_shares_quantity)
+            # TODO: Add db call here to update
+        return redirect('/')
     else:
         return apology("TODO")
